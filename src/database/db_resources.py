@@ -11,7 +11,11 @@ def select_from_table(attributes, table, join, conditions, order_by):
 
     # Join
     if join is not None:
-        res = res + " JOIN " + join['table'] + " USING (" + join['attribute'] + ")"
+        res = res + " JOIN " + join['table']
+        if type(join['attribute']) is list:
+            res = res + " ON " + join['attribute'][0] + " = " + join['attribute'][1]
+        else:
+            res = res + " USING (" + join['attribute'] + ")"
 
     # Where
     if conditions is not None:

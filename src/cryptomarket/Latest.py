@@ -1,4 +1,4 @@
-from src.cryptomarket import utils
+from src.cryptomarket import utils, Listing
 from src.cryptomarket.CMC import CMC
 import src.database.database as database
 import src.cryptomarket.jsonparser as jp
@@ -25,6 +25,26 @@ class CMCLatest(CMC):
         else:
             id_list = None
             price_list = db.get_latest_data(id_list, convert)
+
+        if price_list is not None:
+            return price_list
+
+        # Get data from API
+        price_list = self.update_latest_data(id_list, convert)
+
+        return price_list
+
+    def get_cat_coins_latest_data(self, cat_name, convert):
+        # Retrieve data
+        db = database.DB()
+
+        listing = Listing.CMCListing()
+        data_list = listing.get_coins_for_category(cat_name)
+
+        id_list = []
+        for item in data_list:
+            id_list.append(item[0])
+        price_list = db.get_latest_data(id_list, convert)
 
         if price_list is not None:
             return price_list

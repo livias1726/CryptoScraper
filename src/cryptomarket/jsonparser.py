@@ -27,12 +27,12 @@ def parse_all_categories(json_data):
 
 
 # Gets all coins from a category with 'cryptocurrency/category' call
-def parse_category_coins(json_data, cat_id, cat_name):
+def parse_category_coins(json_data, cat_id):
     item_list = __parse_data(json_data)
     item_list = item_list['coins']
     res = []
     for item in item_list:
-        i = {'coin_id': item['id'], 'coin_name': item['name'], 'cat_id': cat_id, 'cat_name': cat_name}
+        i = {'coin_id': item['id'], 'cat_id': cat_id}
         res.append(i)
     return res
 

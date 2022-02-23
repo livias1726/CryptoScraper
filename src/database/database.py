@@ -40,7 +40,11 @@ class DB:
         # Select
         params = ['*']
         query = db_resources.select_from_table(params, 'all_coins', None, None, 'id')
-        return self.__fetch_all(cur, query)
+        res = self.__fetch_all(cur, query)
+
+        # Return
+        cur.close()
+        return res
 
     def save_coins(self, data_list):
         # Connect
@@ -83,27 +87,36 @@ class DB:
         params = ['id']
         cond = {'name': name.capitalize()}
         query = db_resources.select_from_table(params, 'all_coins', None, cond, None)
-        return self.__fetch_one(cur, query)
+        c_id = self.__fetch_one(cur, query)
+
+        # Return
+        cur.close()
+        return c_id
 
     def get_categories(self):
         # Connect
         cur = self.conn.cursor()
 
         # Select
-        params = {'name', 'num_tokens', 'market_cap', 'volume'}
+        params = ['name', 'num_tokens', 'market_cap', 'volume']
         query = db_resources.select_from_table(params, 'all_categories', None, None, 'name')
-        return self.__fetch_all(cur, query)
+        res = self.__fetch_all(cur, query)
+
+        # Return
+        cur.close()
+        return res
 
     def save_categories(self, data_list):
         # Connect
         cur = self.conn.cursor()
 
         # Manage table
-        cur.execute(db_resources.check_if_table_exists('all_categories'))
+        query = db_resources.check_if_table_exists('all_categories')
+        cur.execute(query)
         if cur.fetchone()[0] != 1:
             # Create table
             columns = {
-                'id': 'integer',
+                'id': 'text',
                 'name': 'text',
                 'num_tokens': 'integer',
                 'market_cap': 'real',
@@ -134,20 +147,30 @@ class DB:
         cur = self.conn.cursor()
 
         # Select
-        params = {'id'}
+        params = ['id']
         cond = {'name': name}
         query = db_resources.select_from_table(params, 'all_categories', None, cond, None)
-        return self.__fetch_one(cur, query)
+        cat_id = self.__fetch_one(cur, query)
+
+        # Return
+        cur.close()
+        return cat_id
 
     def get_category_coins(self, cat_id):
         # Connect
         cur = self.conn.cursor()
 
         # Select
-        params = {'coin_id', 'coin_name'}
+        params = ['coin_id', 'name']
+        joins = {'table': 'all_coins',
+                 'attribute': ['category_coins.coin_id', 'all_coins.id']}
         cond = {'cat_id': cat_id}
-        query = db_resources.select_from_table(params, 'category_coins', None, cond, None)
-        return self.__fetch_all(cur, query)
+        query = db_resources.select_from_table(params, 'category_coins', joins, cond, 'coin_id')
+        res = self.__fetch_all(cur, query)
+
+        # Return
+        cur.close()
+        return res
 
     def save_category_coins(self, data_list):
         # Connect
@@ -165,16 +188,10 @@ class DB:
             query = db_resources.create_table('category_coins', columns, None)
             cur.execute(query)
 
-            # Insert rows
-            for item in data_list:
-                query = db_resources.insert_into_table('category_coins', len(item))
-                cur.execute(query, (item['cat_id'], item['coin_id']))
-        else:
-            # Update rows
-            for item in data_list:
-                cond = {'id': item['id']}
-                query = db_resources.update_table('category_coins', cond, item)
-                cur.execute(query)
+        # Insert rows
+        for item in data_list:
+            query = db_resources.insert_into_table('category_coins', len(item))
+            cur.execute(query, (item['cat_id'], item['coin_id']))
 
         # Return
         self.conn.commit()

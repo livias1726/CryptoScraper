@@ -31,20 +31,19 @@ class CMCListing(CMC):
         data_list = self.update_category_listing()
         return data_list
 
-    # Credit: 1 per call + 1 per 200 curr
     def get_coins_for_category(self, name):
         # Retrieve data from db
         db = database.DB()
         cat_id = db.get_category_id(name)
         if cat_id is None:
-            return "Category not found. Try to update the database by calling 'update_category_listing()'"
+            return "'%s' not found. Try to update the database by calling 'update_category_listing()'" % name
 
         data_list = db.get_category_coins(cat_id)
-        if data_list is not None:
+        if (data_list is not None) and (len(data_list) != 0):
             return data_list
 
         # Update data on db
-        data_list = self.update_coins_per_category(name)
+        data_list = self.update_coins_per_category(cat_id)
         return data_list
 
     # Credit: 1 per call
@@ -78,13 +77,7 @@ class CMCListing(CMC):
 
         return data_list
 
-    def update_coins_per_category(self, name):
-        # Retrieve data from db
-        db = database.DB()
-        cat_id = db.get_category_id(name)
-        if cat_id is None:
-            return "Category not found. Try to update the database by calling 'update_category_listing()'"
-
+    def update_coins_per_category(self, cat_id):
         # Get data from API
         url = self.apiUrl + '/v1/cryptocurrency/category'
         parameters = {'id': cat_id}
@@ -92,7 +85,7 @@ class CMCListing(CMC):
         data = r.json()
 
         # Parse json response
-        data_list = jp.parse_category_coins(data, cat_id, name)
+        data_list = jp.parse_category_coins(data, cat_id)
 
         # save data in db
         db = database.DB()
