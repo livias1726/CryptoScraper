@@ -4,34 +4,41 @@ import sqlite3
 from src.database import db_config, db_resources
 
 
-class DB:
+def _fetch_all(cur, query):
+    try:
+        cur.execute(query)
+        coins = cur.fetchall()
+    except sqlite3.OperationalError:
+        return None
+
+    return coins
+
+
+def _fetch_one(cur, query):
+    try:
+        cur.execute(query)
+        c_id = cur.fetchone()
+        if c_id is None:
+            res = None
+        else:
+            res = c_id[0]
+    except sqlite3.OperationalError:
+        res = None
+
+    return res
+
+
+class Storage:
     def __init__(self):
         try:
             self.conn = sqlite3.connect(db_config.NAME)
         except Error:
             print(Error.args)
 
-    def __fetch_all(self, cur, query):
-        try:
-            cur.execute(query)
-            coins = cur.fetchall()
-        except sqlite3.OperationalError:
-            return None
-
-        return coins
-
-    def __fetch_one(self, cur, query):
-        try:
-            cur.execute(query)
-            c_id = cur.fetchone()
-            if c_id is None:
-                res = None
-            else:
-                res = c_id[0]
-        except sqlite3.OperationalError:
-            res = None
-
-        return res
+    # debug
+    def delete_table(self, name):
+        cur = self.conn.cursor()
+        cur.execute("DROP TABLE '%s'" % name)
 
     def get_coins(self):
         # Connect
@@ -40,7 +47,7 @@ class DB:
         # Select
         params = ['*']
         query = db_resources.select_from_table(params, 'all_coins', None, None, 'id')
-        res = self.__fetch_all(cur, query)
+        res = _fetch_all(cur, query)
 
         # Return
         cur.close()
@@ -87,7 +94,7 @@ class DB:
         params = ['id']
         cond = {'name': name.capitalize()}
         query = db_resources.select_from_table(params, 'all_coins', None, cond, None)
-        c_id = self.__fetch_one(cur, query)
+        c_id = _fetch_one(cur, query)
 
         # Return
         cur.close()
@@ -100,7 +107,7 @@ class DB:
         # Select
         params = ['name', 'num_tokens', 'market_cap', 'volume']
         query = db_resources.select_from_table(params, 'all_categories', None, None, 'name')
-        res = self.__fetch_all(cur, query)
+        res = _fetch_all(cur, query)
 
         # Return
         cur.close()
@@ -150,7 +157,7 @@ class DB:
         params = ['id']
         cond = {'name': name}
         query = db_resources.select_from_table(params, 'all_categories', None, cond, None)
-        cat_id = self.__fetch_one(cur, query)
+        cat_id = _fetch_one(cur, query)
 
         # Return
         cur.close()
@@ -166,7 +173,7 @@ class DB:
                  'attribute': ['category_coins.coin_id', 'all_coins.id']}
         cond = {'cat_id': cat_id}
         query = db_resources.select_from_table(params, 'category_coins', joins, cond, 'coin_id')
-        res = self.__fetch_all(cur, query)
+        res = _fetch_all(cur, query)
 
         # Return
         cur.close()
@@ -211,13 +218,13 @@ class DB:
         if id_list is None:
             cond = {'convert': convert}
             query = db_resources.select_from_table(params, 'latest_data', joins, cond, None)
-            price_list = self.__fetch_all(cur, query)
+            price_list = _fetch_all(cur, query)
         else:
             price_list = []
             for c_id in id_list:
                 cond = {'id': str(c_id), 'convert': convert}
                 query = db_resources.select_from_table(params, 'latest_data', joins, cond, None)
-                data = self.__fetch_all(cur, query)
+                data = _fetch_all(cur, query)
                 if (data is None) or (not data):
                     price_list = None
                     break
@@ -278,7 +285,5 @@ class DB:
         cur.close()
         return self.get_latest_data(id_list, convert)
 
-    # debug
-    def delete_table(self, name):
-        cur = self.conn.cursor()
-        cur.execute("DROP TABLE '%s'" % name)
+    def save_historical_data(self, rows):
+        pass
