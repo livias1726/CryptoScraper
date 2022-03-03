@@ -1,11 +1,10 @@
 import datetime
-
 from requests import get
 
 API_KEY = '2ce45601-9a7d-4b94-818f-b87949adff0e'
 DEFAULT_CONVERT = 'USD'
-DEFAULT_START = '2013-4-28'
-DEFAULT_END = datetime.date.today()
+DEFAULT_START = datetime.datetime.strptime("2013-4-28", "%Y-%m-%d")
+DEFAULT_END = datetime.datetime.today()
 
 
 def format_date(json_date):
@@ -22,8 +21,18 @@ def get_url_data(url):
         response = get(url)
         return response
     except Exception as e:
-        if hasattr(e, "message"):
-            print("Error message (get_url_data) :", e.message)
-        else:
-            print("Error message (get_url_data) :", e)
-        raise e
+        error_msg(e)
+
+
+# Error handling
+def json_error_handling(json_data):
+    status = json_data["status"]
+    if status["error_code"] != 0:
+        raise Exception(status["error_message"])
+
+
+def error_msg(e):
+    if hasattr(e, "message"):
+        print("Error:", e.message)
+    else:
+        print("Error:", e)

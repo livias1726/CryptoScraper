@@ -13,7 +13,7 @@ def select_from_table(attributes, table, join, conditions, order_by):
     if join is not None:
         res = res + " JOIN " + join['table']
         if type(join['attribute']) is list:
-            res = res + " ON " + join['attribute'][0] + " = " + join['attribute'][1]
+            res = res + " ON " + join['attribute'][0] + "=" + join['attribute'][1]
         else:
             res = res + " USING (" + join['attribute'] + ")"
 
@@ -23,12 +23,12 @@ def select_from_table(attributes, table, join, conditions, order_by):
         dim = len(conditions)-1
         keys = list(conditions)
         for i in range(dim):
-            res = res + keys[i] + " = '" + conditions[keys[i]] + "' AND "
-        res = res + keys[dim] + " = '" + conditions[keys[dim]] + "'"
+            res = res + keys[i] + "='" + conditions[keys[i]] + "' AND "
+        res = res + keys[dim] + "='" + conditions[keys[dim]] + "'"
 
     # Order by
     if order_by is not None:
-        res = res + " ORDER BY '%s'" % order_by
+        res = res + " ORDER BY %s" % order_by
 
     return res
 

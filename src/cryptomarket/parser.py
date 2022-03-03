@@ -1,7 +1,7 @@
 from _datetime import datetime
 
 
-class Parser:
+class JsonParser:
     def __init__(self, json_data):
         self.json_data = json_data
 
@@ -76,23 +76,44 @@ class Parser:
                 res.append(i)
         return res
 
-    def parse_historical_data(self):
+    def parse_historical_data(self, convert):
         item_list = self._parse_data()
+
+        if type(item_list) is not list:
+            item_list = [item_list]
+
         rows = []
-        for _row in item_list["quotes"]:
-            _row_quote = list(_row["quote"].values())[0]
-            date = datetime.strptime(_row_quote["timestamp"], "%Y-%m-%dT%H:%M:%S.%fZ").strftime("%Y-%m-%d")
+        for coin in item_list:
+            c_id = coin["id"]
+            for data in coin["quotes"]:
+                quote = list(data["quote"].values())[0]
+                date = datetime.strptime(quote["timestamp"], "%Y-%m-%dT%H:%M:%S.%fZ").strftime("%Y-%m-%d")
 
-            row = [
-                date,
-                _row_quote["open"],
-                _row_quote["high"],
-                _row_quote["low"],
-                _row_quote["close"],
-                _row_quote["volume"],
-                _row_quote["market_cap"],
-            ]
+                row = {"id": c_id,
+                       "date": date,
+                       "convert": convert,
+                       "open": quote["open"],
+                       "high": quote["high"],
+                       "low": quote["low"],
+                       "close": quote["close"],
+                       "volume": quote["volume"],
+                       "market_cap": quote["market_cap"]
+                       }
 
-            rows.insert(0, row)
+                rows.append(row)
 
         return rows
+
+
+class ObservablesParser:
+    def __init__(self, dataset, data_name, data_idx):
+        self.dataset = dataset
+        self.data_name = data_name
+        self.data_idx = data_idx
+
+    def get_observables(self):
+        obs = []
+        for data in self.dataset:
+            ob = {'date': data[1], self.data_name: data[self.data_idx]}
+            obs.append(ob)
+        return obs

@@ -28,7 +28,7 @@ def _fetch_one(cur, query):
     return res
 
 
-class Storage:
+class DBConnector:
     def __init__(self):
         try:
             self.conn = sqlite3.connect(db_config.NAME)
@@ -39,6 +39,9 @@ class Storage:
     def delete_table(self, name):
         cur = self.conn.cursor()
         cur.execute("DROP TABLE '%s'" % name)
+
+
+class DBGetter(DBConnector):
 
     def get_coins(self):
         # Connect
@@ -52,39 +55,6 @@ class Storage:
         # Return
         cur.close()
         return res
-
-    def save_coins(self, data_list):
-        # Connect
-        cur = self.conn.cursor()
-
-        # Manage table
-        query = db_resources.check_if_table_exists('all_coins')
-        cur.execute(query)
-        if cur.fetchone()[0] != 1:
-            # Create table
-            columns = {
-                'id': 'integer',
-                'name': 'text',
-                'symbol': 'text',
-            }
-            pks = ['id']
-            query = db_resources.create_table('all_coins', columns, pks)
-            cur.execute(query)
-
-            # Insert rows
-            for item in data_list:
-                query = db_resources.insert_into_table('all_coins', len(item))
-                cur.execute(query, (item['id'], item['name'], item['symbol']))
-        else:
-            # Update rows
-            for item in data_list:
-                cond = {'id': item['id']}
-                query = db_resources.update_table('all_coins', cond, item)
-                cur.execute(query)
-
-        self.conn.commit()
-        cur.close()
-        return self.get_coins()
 
     def get_coin_id(self, name):
         # Connect
@@ -112,42 +82,6 @@ class Storage:
         # Return
         cur.close()
         return res
-
-    def save_categories(self, data_list):
-        # Connect
-        cur = self.conn.cursor()
-
-        # Manage table
-        query = db_resources.check_if_table_exists('all_categories')
-        cur.execute(query)
-        if cur.fetchone()[0] != 1:
-            # Create table
-            columns = {
-                'id': 'text',
-                'name': 'text',
-                'num_tokens': 'integer',
-                'market_cap': 'real',
-                'volume': 'real'
-            }
-            pks = ['id']
-            query = db_resources.create_table('all_categories', columns, pks)
-            cur.execute(query)
-
-            # Insert rows
-            for item in data_list:
-                query = db_resources.insert_into_table('all_categories', len(item))
-                cur.execute(query, (item['id'], item['name'], item['num_tokens'], item['market_cap'], item['volume']))
-        else:
-            # Update rows
-            for item in data_list:
-                cond = {'id': item['id']}
-                query = db_resources.update_table('all_categories', cond, item)
-                cur.execute(query)
-
-        # Return
-        self.conn.commit()
-        cur.close()
-        return self.get_categories()
 
     def get_category_id(self, name):
         # Connect
@@ -179,32 +113,6 @@ class Storage:
         cur.close()
         return res
 
-    def save_category_coins(self, data_list):
-        # Connect
-        cur = self.conn.cursor()
-
-        # Manage table
-        query = db_resources.check_if_table_exists('category_coins')
-        cur.execute(query)
-        if cur.fetchone()[0] != 1:
-            # Create table
-            columns = {
-                'cat_id': 'text REFERENCES all_categories("id")',
-                'coin_id': 'integer REFERENCES all_coins("id")'
-            }
-            query = db_resources.create_table('category_coins', columns, None)
-            cur.execute(query)
-
-        # Insert rows
-        for item in data_list:
-            query = db_resources.insert_into_table('category_coins', len(item))
-            cur.execute(query, (item['cat_id'], item['coin_id']))
-
-        # Return
-        self.conn.commit()
-        cur.close()
-        return self.get_category_coins(data_list[0]['cat_id'])
-
     def get_latest_data(self, id_list, convert):
         # Connect
         cur = self.conn.cursor()
@@ -233,14 +141,143 @@ class Storage:
         cur.close()
         return price_list
 
-    def save_latest_data(self, data_list, id_list, convert):
+    def get_historical_data(self, coin_id, convert, start, end, descending):
         # Connect
         cur = self.conn.cursor()
+
+        # Select
+        params = ['name', 'date', 'convert', 'opening', 'highest', 'lowest', 'closing', 'volume', 'market_cap']
+        joins = {'table': 'all_coins',
+                 'attribute': 'id'}
+
+        if descending:
+            orderby = 'historical_data.date DESC'
+        else:
+            orderby = 'historical_data.date ASC'
+
+        cond = {'convert': convert, 'date>': str(start).split(' ')[0], 'date<': str(end).split(' ')[0],
+                'id': str(coin_id)}
+
+        query = db_resources.select_from_table(params, 'historical_data', joins, cond, orderby)
+        data = _fetch_all(cur, query)
+        if (data is None) or (not data):
+            data = None
+
+        cur.close()
+        return data
+
+
+class DBSetter(DBConnector):
+
+    def __init__(self, data):
+        super().__init__()
+        self.data = data
+
+    def save_coins(self):
+        # Connect
+        cur = self.conn.cursor()
+
+        # Manage table
+        query = db_resources.check_if_table_exists('all_coins')
+        cur.execute(query)
+        if cur.fetchone()[0] != 1:
+            # Create table
+            columns = {
+                'id': 'integer',
+                'name': 'text',
+                'symbol': 'text',
+            }
+            pks = ['id']
+            query = db_resources.create_table('all_coins', columns, pks)
+            cur.execute(query)
+
+            # Insert rows
+            for item in self.data:
+                query = db_resources.insert_into_table('all_coins', len(item))
+                cur.execute(query, (item['id'], item['name'], item['symbol']))
+        else:
+            # Update rows
+            for item in self.data:
+                cond = {'id': item['id']}
+                query = db_resources.update_table('all_coins', cond, item)
+                cur.execute(query)
+
+        self.conn.commit()
+        cur.close()
+        self.conn.close()
+
+        return DBGetter().get_coins()
+
+    def save_categories(self):
+        # Connect
+        cur = self.conn.cursor()
+
+        # Manage table
+        query = db_resources.check_if_table_exists('all_categories')
+        cur.execute(query)
+        if cur.fetchone()[0] != 1:
+            # Create table
+            columns = {'id': 'text',
+                       'name': 'text',
+                       'num_tokens': 'integer',
+                       'volume': 'real',
+                       'market_cap': 'real'
+                       }
+            pks = ['id']
+            query = db_resources.create_table('all_categories', columns, pks)
+            cur.execute(query)
+
+            # Insert rows
+            for item in self.data:
+                query = db_resources.insert_into_table('all_categories', len(item))
+                cur.execute(query, (item['id'], item['name'], item['num_tokens'], item['volume'], item['market_cap']))
+        else:
+            # Update rows
+            for item in self.data:
+                cond = {'id': item['id']}
+                query = db_resources.update_table('all_categories', cond, item)
+                cur.execute(query)
+
+        self.conn.commit()
+        cur.close()
+        self.conn.close()
+
+        return DBGetter().get_categories()
+
+    def save_category_coins(self):
+        # Connect
+        cur = self.conn.cursor()
+
+        # Manage table
+        query = db_resources.check_if_table_exists('category_coins')
+        cur.execute(query)
+        if cur.fetchone()[0] != 1:
+            # Create table
+            columns = {'cat_id': 'text REFERENCES all_categories("id")',
+                       'coin_id': 'integer REFERENCES all_coins("id")'}
+            query = db_resources.create_table('category_coins', columns, None)
+            cur.execute(query)
+
+        # Insert rows
+        for item in self.data:
+            query = db_resources.insert_into_table('category_coins', len(item))
+            cur.execute(query, (item['cat_id'], item['coin_id']))
+
+        self.conn.commit()
+        cur.close()
+        self.conn.close()
+
+        return DBGetter().get_category_coins(self.data[0]['cat_id'])
+
+    def save_latest_data(self, id_list, convert):
+        # Connect
+        cur = self.conn.cursor()
+
         # Manage table
         query = db_resources.check_if_table_exists('latest_data')
         cur.execute(query)
-
         if cur.fetchone()[0] != 1:
+
             # Create table
             columns = {
                 'id': 'integer REFERENCES all_coins("id")',
@@ -252,18 +289,19 @@ class Storage:
                 'market_cap': 'real',
                 'last_update': 'text'
             }
-            query = db_resources.create_table('latest_data', columns, None)
+            pks = ['id', 'convert']
+            query = db_resources.create_table('latest_data', columns, pks)
             cur.execute(query)
 
             # Insert rows
-            for item in data_list:
+            for item in self.data:
                 query = db_resources.insert_into_table('latest_data', len(item))
                 cur.execute(query, (item['id'], item['convert'], item['price'], item['volume_24h'],
                                     item['volume_change_24h'], item['percent_change_24h'], item['market_cap'],
                                     item['last_update']))
         else:
             params = ['count(*)']
-            for item in data_list:
+            for item in self.data:
                 # Check existence
                 cond = {'id': str(item['id']),
                         'convert': convert}
@@ -280,10 +318,49 @@ class Storage:
                                         item['volume_change_24h'], item['percent_change_24h'], item['market_cap'],
                                         item['last_update']))
 
-        # Return
         self.conn.commit()
         cur.close()
-        return self.get_latest_data(id_list, convert)
+        self.conn.close()
 
-    def save_historical_data(self, rows):
-        pass
+        return DBGetter().get_latest_data(id_list, convert)
+
+    def save_historical_data(self, coin_id, convert, start, end, descending, first_data):
+        # Connect
+        cur = self.conn.cursor()
+
+        # Manage table
+        query = db_resources.check_if_table_exists("historical_data")
+        cur.execute(query)
+        if cur.fetchone()[0] != 1:
+            # Create table
+            columns = {'id': 'integer REFERENCES all_coins("id")',
+                       'date': 'text',
+                       'convert': 'text',
+                       'opening': 'real',
+                       'highest': 'real',
+                       'lowest': 'real',
+                       'closing': 'real',
+                       'volume': 'integer',
+                       'market_cap': 'real',
+                       'first_data': 'bool'}
+            pks = ['id', 'date', 'convert']
+            query = db_resources.create_table('historical_data', columns, pks)
+            cur.execute(query)
+
+        # If the retrieved historical data are the oldest on CoinMarketCap for that coin, label data
+        # Insert rows
+        for item in self.data:
+            query = db_resources.insert_into_table('historical_data', len(item) + 1)
+            if first_data and (item == self.data[0]):
+                cur.execute(query, (item['id'], item['date'], item['convert'], item['open'], item['high'], item['low'],
+                                    item['close'], item['volume'], item['market_cap'], True))
+                continue
+
+            cur.execute(query, (item['id'], item['date'], item['convert'], item['open'], item['high'], item['low'],
+                                item['close'], item['volume'], item['market_cap'], False))
+
+        self.conn.commit()
+        cur.close()
+        self.conn.close()
+
+        return DBGetter().get_historical_data(coin_id, convert, start, end, descending)
