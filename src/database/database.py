@@ -1,6 +1,8 @@
 from sqlite3 import Error
 import sqlite3
+from time import strptime
 
+from src.cryptomarket import utils
 from src.database import db_config, db_resources
 
 
@@ -136,7 +138,7 @@ class DBGetter(DBConnector):
                 if (data is None) or (not data):
                     price_list = None
                     break
-                price_list.append(data)
+                price_list.append(data[0])
 
         cur.close()
         return price_list
@@ -200,6 +202,7 @@ class DBSetter(DBConnector):
             for item in self.data:
                 cond = {'id': item['id']}
                 query = db_resources.update_table('all_coins', cond, item)
+                print(query)
                 cur.execute(query)
 
         self.conn.commit()
@@ -325,13 +328,15 @@ class DBSetter(DBConnector):
         return DBGetter().get_latest_data(id_list, convert)
 
     def save_historical_data(self, coin_id, convert, start, end, descending, first_data):
+        is_new = False
+
         # Connect
         cur = self.conn.cursor()
 
         # Manage table
         query = db_resources.check_if_table_exists("historical_data")
         cur.execute(query)
-        if cur.fetchone()[0] != 1:
+        if cur.fetchone()[0] != 1:  # Table does not exist
             # Create table
             columns = {'id': 'integer REFERENCES all_coins("id")',
                        'date': 'text',
@@ -346,16 +351,21 @@ class DBSetter(DBConnector):
             pks = ['id', 'date', 'convert']
             query = db_resources.create_table('historical_data', columns, pks)
             cur.execute(query)
+            is_new = True
 
-        # If the retrieved historical data are the oldest on CoinMarketCap for that coin, label data
+        if not is_new:
+            self._filter_insert(cur, coin_id, convert, start, end, descending)
+
         # Insert rows
         for item in self.data:
             query = db_resources.insert_into_table('historical_data', len(item) + 1)
+            # The data are the oldest on CoinMarketCap for that coin and the first record for that coin
             if first_data and (item == self.data[0]):
                 cur.execute(query, (item['id'], item['date'], item['convert'], item['open'], item['high'], item['low'],
                                     item['close'], item['volume'], item['market_cap'], True))
                 continue
 
+            # Else
             cur.execute(query, (item['id'], item['date'], item['convert'], item['open'], item['high'], item['low'],
                                 item['close'], item['volume'], item['market_cap'], False))
 
@@ -364,3 +374,37 @@ class DBSetter(DBConnector):
         self.conn.close()
 
         return DBGetter().get_historical_data(coin_id, convert, start, end, descending)
+
+    def _filter_insert(self, cur, coin_id, convert, start, end, descending):
+        first_data = self.data[0]
+        last_data = self.data[len(self.data)-1]
+
+        start_r = strptime(first_data['date'], '%Y-%m-%d')
+        end_r = strptime(last_data['date'], '%Y-%m-%d')
+
+        # Get stored data
+        data = DBGetter().get_historical_data(coin_id, convert, start, end, descending)
+
+        # Get date for last data stored
+        start_s = strptime(data[0][1], '%Y-%m-%d')
+        end_s = strptime(data[len(data)-1][1], '%Y-%m-%d')
+
+        # Find which data to store
+        filtered = None
+        if start_r < start_s:
+            for i in range(0, len(self.data)):
+                if strptime(self.data[i]['date'], '%Y-%m-%d') == start_s:
+                    filtered = self.data[:i]
+                    break
+
+        if end_r > end_s or start_r >= end_s:
+            for i in range(0, len(self.data)):
+                if strptime(self.data[i]['date'], '%Y-%m-%d') == end_s:
+                    if filtered is not None:
+                        filtered = filtered + self.data[i+1:]
+                    else:
+                        filtered = self.data[i+1:]
+                    break
+
+        self.data = filtered
+

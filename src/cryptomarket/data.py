@@ -5,8 +5,25 @@ import src.database.database as database
 from src.cryptomarket import parser
 
 
-# https://coinmarketcap.com/api/documentation/v1/
+"""
+CMCListing: the class to get semi-constant data (available coins, categories of coins, coins per category).
+    Uses the key for the CoinMarketCap API.
+
+CMCLatest: the class to get latest data information.
+    Uses the key for the CoinMarketCap API.
+
+CMCHistorical: the class to get historical information.
+    Does not use the key for the CoinMarketCap API. Information is retrieved through web scraping.
+"""
+
+
 class CMC:
+    """
+    CMC: the parent class for every class that retrieves and manages data from the Web or the DB.
+        Creates a session to query the coinmarketcap server and sets the API-key to perform the queries.
+        Documentation for the CMC API can be found at https://coinmarketcap.com/api/documentation/v1/
+    """
+    # Only contains the constructor to set the API_KEY param and initialize the session
     def __init__(self, token=utils.API_KEY):
         self.api_url = 'https://pro-api.coinmarketcap.com'
         self.headers = {'Accepts': 'application/json',
@@ -16,21 +33,29 @@ class CMC:
 
 
 class CMCListing(CMC):
-
+    """
+    CMCListing: the class to get semi-constant data (available coins, categories of coins, coins per category).
+        Uses the key for the CoinMarketCap API.
+    """
+    # Calls the parent constructor to retrieve session info
     def __init__(self):
         super().__init__()
 
+    # Gets the list of coins
     def get_coins(self):
-        # Retrieve data from db
+        # Retrieve data from DB
         db = database.DBGetter()
         data_list = db.get_coins()
+
         if data_list is not None:
+            # Data are available in the DB
             return data_list
 
-        # Update data on db
+        # Data are not available in the DB
         res = self.update_coin_listing()
         return res
 
+    # Retrieves the list of coins from CoinMarketCap
     def update_coin_listing(self):
         # Get data from API
         url = self.api_url + '/v1/cryptocurrency/map'
@@ -55,10 +80,12 @@ class CMCListing(CMC):
             print("Cannot retrieve coins data")
             utils.error_msg(e)
 
+    # Gets the list of coin categories
     def get_categories(self):
         # Retrieve data from db
         db = database.DBGetter()
         data_list = db.get_categories()
+
         if data_list is not None:
             return data_list
 
@@ -66,6 +93,7 @@ class CMCListing(CMC):
         data_list = self.update_category_listing()
         return data_list
 
+    # Retrieves the list of coin categories from CoinMarketCap
     def update_category_listing(self):
         # Get data from API
         url = self.api_url + '/v1/cryptocurrency/categories'
@@ -90,6 +118,7 @@ class CMCListing(CMC):
             print("Cannot retrieve categories data")
             utils.error_msg(e)
 
+    # Gets the list of coins related to a given category
     def get_coins_for_category(self, name):
         # Retrieve data from db
         db = database.DBGetter()
@@ -105,6 +134,7 @@ class CMCListing(CMC):
         data_list = self.update_coins_for_category(cat_id)
         return data_list
 
+    # Retrieves the list of coins related to a given category from CoinMarketCap
     def update_coins_for_category(self, cat_id):
         # Get data from API
         url = self.api_url + '/v1/cryptocurrency/category'
@@ -132,11 +162,15 @@ class CMCListing(CMC):
 
 
 class CMCLatest(CMC):
-
+    """
+    CMCLatest: the class to get the latest data related to price, market_cap and volumes for given coins.
+        Uses scraping mechanisms to retrieve information without the API key.
+    """
     def __init__(self, convert=utils.DEFAULT_CONVERT):
         super().__init__()
         self.convert = convert
 
+    # Gets the latest data related to a given coin
     def get_latest_data(self, names=None):
         # Retrieve data from db
         db = database.DBGetter()
@@ -160,6 +194,7 @@ class CMCLatest(CMC):
 
         return price_list
 
+    # Gets the latest data related to a given category
     def get_cat_coins_latest_data(self, cat_name):
         # Retrieve data
         cmc_listing = CMCListing()
@@ -180,7 +215,8 @@ class CMCLatest(CMC):
 
         return price_list
 
-    def update_latest_data(self, id_list):
+    # Retrieves the latest data for a list of coins from CoinMarketCap
+    def update_latest_data(self, id_list=None):
         # Download the latest data for every coin
         if id_list is None:
             url = self.api_url + '/v1/cryptocurrency/listings/latest'
@@ -219,19 +255,26 @@ class CMCLatest(CMC):
         if data is None:
             return None
 
-        result = data[0][0]
-        str_res = str(amount) + " " + result[0] + " are " + format(result[2] * amount, '.2f') \
-                  + " " + self.convert + " (last update on " + utils.format_date(result[7]) + ")"
+        result = data[0]
+        str_res = str(amount) + " " + result[0] + " are " + format(float(result[2] * amount), '.2f') \
+                  + " " + self.convert + ". Last update on " + utils.format_date(result[7]) + "."
 
         return str_res
 
 
 class CMCHistorical:
-
-    def __init__(self, coin, start_date=utils.DEFAULT_START, end_date=utils.DEFAULT_END, order_desc=False,
+    """
+    CMCHistorical: the class to get the historical data related to price, market_cap and volumes for given coins.
+        Uses scraping mechanisms to retrieve information without the API key.
+    """
+    # The constructor takes
+    #   - the coin to retrieve information about
+    #   - the time interval of said information
+    #   - the order in which to get this information
+    #   - the fiat used to show the prices
+    def __init__(self, start_date=utils.DEFAULT_START, end_date=utils.DEFAULT_END, order_desc=False,
                  convert=utils.DEFAULT_CONVERT):
         # Arguments
-        self.coin = coin
         self.start_date = start_date
 
         if self.start_date == utils.DEFAULT_START:
@@ -245,38 +288,35 @@ class CMCHistorical:
 
         # Fixed params
         self.scraping_url = 'https://web-api.coinmarketcap.com'
-        self.header = ('Coin', 'Date', 'Currency', 'Opening', 'Highest', 'Lowest', 'Volume', 'Market Cap')
 
         # Result
         self.rows = []
 
-    # Download historical data for the specified coins and time range
-    def get_historical_data(self):
+    # Download historical data for the specified coin and time range
+    def get_historical_data(self, coin):
         # Retrieve data from DB
         db = database.DBGetter()
 
-        c_id = db.get_coin_id(self.coin)
+        c_id = db.get_coin_id(coin)
         if c_id is None:
-            print("'%s' not found. Try to update the database by calling 'update_coin_listing()'" % self.coin)
+            print("'%s' not found. Try to update the database by calling 'update_coin_listing()'" % coin)
             return None
 
         data = db.get_historical_data(c_id, self.convert, self.start_date, self.end_date, self.order_desc)
         if data is not None:
             h_data = data
         else:
-            res = self._download_historical_data(c_id)
-            if res is None:
-                return res
+            h_data = self.update_historical_data(coin, c_id)
 
-            # Store downloaded data
-            db = database.DBSetter(res)
-            h_data = db.save_historical_data(c_id, self.convert, self.start_date, self.end_date, self.order_desc,
-                                             self.first_flag)
-
-        h_data.insert(0, self.header)
         return h_data
 
-    def _download_historical_data(self, coin_id):
+    def update_historical_data(self, coin, coin_id=None):
+        if coin_id is None:
+            coin_id = database.DBGetter().get_coin_id(coin)
+            if coin_id is None:
+                print("'%s' not found. Try to update the database by calling 'update_coin_listing()'" % coin)
+                return None
+
         # Convert the date for the URL
         start_date_iso = self.start_date.isoformat()
         end_date_iso = self.end_date.isoformat()
@@ -285,8 +325,8 @@ class CMCHistorical:
         url = self.scraping_url + "/v1/cryptocurrency/ohlcv/historical?convert={}&id={}&time_end={}&time_start={}" \
             .format(self.convert, coin_id, end_date_iso, start_date_iso)
 
-        # Get data
         try:
+            # Get data
             json_data = utils.get_url_data(url).json()
             utils.json_error_handling(json_data)
 
@@ -302,7 +342,12 @@ class CMCHistorical:
             if self.order_desc:
                 self.rows.sort(key=lambda x: datetime.strptime(x[0], "%Y-%m-%d"))
 
-            return self.rows
+            # Store downloaded data
+            db = database.DBSetter(self.rows)
+            res = db.save_historical_data(coin_id, self.convert, self.start_date, self.end_date, self.order_desc,
+                                          self.first_flag)
+
+            return res
 
         except Exception as e:
             print("Cannot retrieve historical data")

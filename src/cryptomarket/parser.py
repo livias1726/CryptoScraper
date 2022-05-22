@@ -117,3 +117,69 @@ class ObservablesParser:
             ob = {'date': data[1], self.data_name: data[self.data_idx]}
             obs.append(ob)
         return obs
+
+
+class Trimmer:
+
+    def __init__(self, time_offset, time_data, obs_data):
+        self.time_offset = time_offset
+        self.time_data = time_data
+        self.obs_data = obs_data
+
+    def trim_data(self):
+        if self.time_offset == 'w':
+            return self._trim_weekly()
+        elif self.time_offset == 'm':
+            return self._trim_monthly()
+        elif self.time_offset == 'y':
+            return self._trim_yearly()
+        else:
+            print("Invalid time offset.")
+            return None, None
+
+    def _trim_yearly(self):
+        base = self.time_data[0]
+        x = [base]
+        y = [self.obs_data[0]]
+
+        date = datetime.strptime(base, "%Y-%m-%d")
+
+        day = date.day
+        month = date.month
+        year = date.year
+
+        for i in range(1, len(self.time_data)):
+            day_i = datetime.strptime(self.time_data[i], "%Y-%m-%d").day
+            month_i = datetime.strptime(self.time_data[i], "%Y-%m-%d").month
+            year_i = datetime.strptime(self.time_data[i], "%Y-%m-%d").year
+
+            if (day_i == day) and (month_i == month) and (year_i != year):
+                x.append(self.time_data[i])
+                y.append(self.obs_data[i])
+                year = datetime.strptime(self.time_data[i], "%Y-%m-%d").year
+
+        return x, y
+
+    def _trim_monthly(self):
+        base = self.time_data[0]
+        x = [base]
+        y = [self.obs_data[0]]
+
+        day = datetime.strptime(base, "%Y-%m-%d").day
+        for i in range(1, len(self.time_data)):
+            if datetime.strptime(self.time_data[i], "%Y-%m-%d").day is day:
+                x.append(self.time_data[i])
+                y.append(self.obs_data[i])
+
+        return x, y
+
+    def _trim_weekly(self):
+        base = self.time_data[0]
+        x = [base]
+        y = [self.obs_data[0]]
+
+        for i in range(6, len(self.time_data), 7):
+            x.append(self.time_data[i])
+            y.append(self.obs_data[i])
+
+        return x, y

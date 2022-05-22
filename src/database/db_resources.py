@@ -68,6 +68,17 @@ def insert_into_table(name, dim):
     return res
 
 
+def _validate_input(param):
+    if type(param) is str:
+        idxs = [i for i, c in enumerate(param) if c == "'"]
+        for idx in idxs:
+            param = param[:idx] + param[idx+1:]
+    else:
+        param = str(param)
+
+    return param
+
+
 def update_table(table, conditions, params):
     # Update
     res = "UPDATE '%s'" % table
@@ -77,8 +88,11 @@ def update_table(table, conditions, params):
     dim = len(params) - 1
     keys = list(params)
     for i in range(1, dim):
-        res = res + keys[i] + " = '" + str(params[keys[i]]) + "', "
-    res = res + keys[dim] + " = '" + str(params[keys[dim]]) + "'"
+        valid_value = _validate_input(params[keys[i]])
+        res = res + keys[i] + " = '" + valid_value + "', "
+
+    valid_value = _validate_input(params[keys[dim]])
+    res = res + keys[dim] + " = '" + valid_value + "'"
 
     # Where
     res = res + " WHERE "
