@@ -6,6 +6,8 @@ DEFAULT_CONVERT = 'USD'
 DEFAULT_START = datetime.datetime.strptime("2013-4-28", "%Y-%m-%d")
 DEFAULT_END = datetime.datetime.today()
 DEFAULT_OFFSET = 'd'
+DEFAULT_STYLE = 'bmh'
+# 'bmh', 'ggplot', 'seaborn'
 
 
 def format_date(json_date):
@@ -37,3 +39,22 @@ def error_msg(e):
         print("Error:", e.message)
     else:
         print("Error:", e)
+
+
+def set_size(width, fraction=1):
+    # Width of figure
+    fig_width_pt = width * fraction
+
+    # Convert from pt to inches
+    inches_per_pt = 1 / 72.27
+
+    # Golden ratio to set aesthetic figure height
+    golden_ratio = (5 ** 0.5 - 1) / 2
+
+    # Figure width in inches
+    fig_width_in = fig_width_pt * inches_per_pt
+    # Figure height in inches
+    fig_height_in = fig_width_in * golden_ratio
+
+    return fig_width_in, fig_height_in
+

@@ -1,7 +1,3 @@
-import datetime
-import time
-from pprint import pp
-
 from tabulate import tabulate
 
 from src.cryptomarket.data import CMCHistorical, CMC, CMCListing, CMCLatest
@@ -34,20 +30,27 @@ print(tabulate(cmc.get_coins_for_category('Cybersecurity'), headers=["ID", "NAME
 
 """
 cmc = CMCLatest('USD')
-print(tabulate(cmc.get_latest_data(['ethereum', 'bitcoin', 'cardano']), headers=["NAME", "CURRENCY", "PRICE", "VOLUME (24H)", "VOLUME CHANGE (24H)", "PERCENT CHANGE (24H)", "MARKET CAP", "LAST UPDATE"]))
-print(tabulate(cmc.get_latest_data(), headers=["NAME", "CURRENCY", "PRICE", "VOLUME (24H)", "VOLUME CHANGE (24H)", "PERCENT CHANGE (24H)", "MARKET CAP", "LAST UPDATE"]))
+print(tabulate(cmc.get_latest_data(['ethereum', 'bitcoin', 'cardano']), headers=["NAME", "CURRENCY", "PRICE", 
+                                                                                 "VOLUME (24H)", "VOLUME CHANGE (24H)", 
+                                                                                 "PERCENT CHANGE (24H)", "MARKET CAP", 
+                                                                                 "LAST UPDATE"]))
+print(tabulate(cmc.get_latest_data(), headers=["NAME", "CURRENCY", "PRICE", "VOLUME (24H)", "VOLUME CHANGE (24H)", 
+                                               "PERCENT CHANGE (24H)", "MARKET CAP", "LAST UPDATE"]))
 print(cmc.get_price_conversion(20, 'cardano'))
-print(tabulate(cmc.get_cat_coins_latest_data('Cybersecurity'), headers=["NAME", "CURRENCY", "PRICE", "VOLUME (24H)", "VOLUME CHANGE (24H)", "PERCENT CHANGE (24H)", "MARKET CAP", "LAST UPDATE"]))
-
+print(tabulate(cmc.get_cat_coins_latest_data('Cybersecurity'), headers=["NAME", "CURRENCY", "PRICE", "VOLUME (24H)", 
+                                                                        "VOLUME CHANGE (24H)", "PERCENT CHANGE (24H)", 
+                                                                        "MARKET CAP", "LAST UPDATE"]))
 
 cmc = CMCHistorical()
-print(tabulate(cmc.get_historical_data('bitcoin'), headers=["COIN", "DATE", "CURRENCY", "OPENING", "HIGHEST", "LOWEST", "CLOSE", "VOLUME", "MARKET CAP"]))
+print(tabulate(cmc.get_historical_data('ethereum'), headers=["COIN", "DATE", "CURRENCY", "OPENING", "HIGHEST", "LOWEST",
+                                                             "CLOSE", "VOLUME", "MARKET CAP"]))
 """
 
-# DELETE INFO
-# db.delete_table('historical_data')
 
 # SHOW INFO
-# g = Graph('bitcoin', 'close')
+g = Graph('bitcoin', 'close', 'y')
+# g.show_observable()
+g.show_coins_pairing({'ethereum'})
+# g.show_obs_pairing({'open'})
 # g.show_moving_average(200, True)
 

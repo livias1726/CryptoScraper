@@ -376,14 +376,16 @@ class DBSetter(DBConnector):
         return DBGetter().get_historical_data(coin_id, convert, start, end, descending)
 
     def _filter_insert(self, cur, coin_id, convert, start, end, descending):
+        # Get stored data
+        data = DBGetter().get_historical_data(coin_id, convert, start, end, descending)
+        if data is None:
+            return [start, end]
+
         first_data = self.data[0]
         last_data = self.data[len(self.data)-1]
 
         start_r = strptime(first_data['date'], '%Y-%m-%d')
         end_r = strptime(last_data['date'], '%Y-%m-%d')
-
-        # Get stored data
-        data = DBGetter().get_historical_data(coin_id, convert, start, end, descending)
 
         # Get date for last data stored
         start_s = strptime(data[0][1], '%Y-%m-%d')
