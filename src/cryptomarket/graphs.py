@@ -2,6 +2,7 @@ from datetime import datetime
 
 from src.cryptomarket import utils, data, parser
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 class Graph:
@@ -153,25 +154,24 @@ class Graph:
     The moving average is compute in terms of number of days.
     If on_data is true, the MA is shown against the data on which it is computed.
     """
-    def show_moving_average(self, n, on_data):
+    def show_sma(self, n, on_data):
         # Get data
-        dates, data = self._get_axes()
-        dates_array = [dates]
+        dates, obs_data = self._get_axes()
 
         # Check if MA is computable
-        if len(data) < n:
+        if len(obs_data) < n:
             print("Too few data. Try to extend the period of observation or reduce the MA index")
             return None
 
         # Compute the first n days
-        moving_averages = utils.get_moving_average(data, n)
+        moving_averages = utils.get_moving_average(obs_data, n)
         data_array = [moving_averages]
 
         title = self.coin.capitalize() + " " + self.observable + ' SMA on ' + str(n) + " days"
 
         # Prepare axes
         if on_data:
-            data_array.append(data[n-1:])
+            data_array.append(obs_data[n-1:])
             header = ["MA(" + str(n) + ")", self.observable.capitalize()]
 
             # Design
@@ -181,6 +181,36 @@ class Graph:
             # Design
             des = _Designer(self.coin, self.observable, self.offset, self.convert)
             des.design_single_line_plot(dates[n-1:], moving_averages, title)
+
+    def show_ema(self, on_data):
+        # Get data
+        dates, obs_data = self._get_axes()
+
+        # create a dataframe
+        data_df = pd.DataFrame(obs_data)
+
+        # EMA: the com value must result in a good smoothened curve
+        ema = data_df.ewm(com=0.1).mean()
+        ema_values = []
+        for array in ema[[0]].values:
+            ema_values.append(array[0])
+
+        data_array = [ema_values[::150]]
+
+        title = self.coin.capitalize() + " " + self.observable + " EMA"
+
+        # Prepare axes
+        if on_data:
+            data_array.append(obs_data[::150])
+            header = ["EMA", self.observable.capitalize()]
+
+            # Design
+            des = _Designer(self.coin, self.observable, self.offset, self.convert)
+            des.design_multi_lines_plot(title, header, data_array, dates[::150])
+        else:
+            # Design
+            des = _Designer(self.coin, self.observable, self.offset, self.convert)
+            des.design_single_line_plot(dates[::150], ema_values[::150], title)
 
     def show_latest_pairing(self):
         pass
