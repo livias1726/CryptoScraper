@@ -149,62 +149,38 @@ class Graph:
         des = _Designer(self.coin, self.observable, self.offset, self.convert)
         des.design_multi_lines_plot(title, header, data_array, dates)
 
-    # if on_data flag is true, the MA is shown on the observable
+    """
+    The moving average is compute in terms of number of days.
+    If on_data is true, the MA is shown against the data on which it is computed.
+    """
     def show_moving_average(self, n, on_data):
-        global i
-        local_start = None
-
-        # Manage time intervals
-        if self.start != utils.DEFAULT_START:
-            local_start = self.start
-            self.start = utils.DEFAULT_START
-        x, y = self._get_axes()
+        # Get data
+        dates, data = self._get_axes()
+        dates_array = [dates]
 
         # Check if MA is computable
-        if len(x) < n:
+        if len(data) < n:
             print("Too few data. Try to extend the period of observation or reduce the MA index")
             return None
 
-        # Restore requested time interval
-        if local_start is not None:
-            self.start = local_start
-
         # Compute the first n days
-        # TODO: compute ma considering start value different than default
+        moving_averages = utils.get_moving_average(data, n)
+        data_array = [moving_averages]
 
-        ma_sum = 0
-        ma = []
-        for i in range(n):
-            ma_sum += y[i]
-        ma.append(ma_sum / n)
-
-        # Compute the whole MA
-        while i < len(x):
-            ma_sum = ma_sum + y[i] - y[i - n]
-            ma.append(ma_sum / n)
-            i += 1
+        title = self.coin.capitalize() + " " + self.observable + ' SMA on ' + str(n) + " days"
 
         # Prepare axes
         if on_data:
-            if self.offset != utils.DEFAULT_OFFSET:
-                # Parse data
-                tr = parser.Trimmer(self.offset, x, y)
-                x, y = tr.trim_data()
-                if x is None:
-                    return
+            data_array.append(data[n-1:])
+            header = ["MA(" + str(n) + ")", self.observable.capitalize()]
 
-                tr = parser.Trimmer(self.offset, x, ma)
-                x, ma = tr.trim_data()
-
-                if x is None:
-                    return
-
-            y = y[n:len(x)]
-        x = x[n:len(x)]
-
-        # Design
-        des = _Designer(self.coin, self.observable, self.observable_title, self.offset, self.convert)
-        des.design_pair_line_plot(x, y, ma)
+            # Design
+            des = _Designer(self.coin, self.observable, self.offset, self.convert)
+            des.design_multi_lines_plot(title, header, data_array, dates[n-1:])
+        else:
+            # Design
+            des = _Designer(self.coin, self.observable, self.offset, self.convert)
+            des.design_single_line_plot(dates[n-1:], moving_averages, title)
 
     def show_latest_pairing(self):
         pass
@@ -281,12 +257,16 @@ class _Designer(Graph):
         else:
             self.offset_title = "daily"
 
-    def design_single_line_plot(self, x, y):
+    def design_single_line_plot(self, x, y, title=None):
         plt.style.use(self.style)
         plt.figure(figsize=utils.set_size(32, 18))
 
         plt.plot(x, y)
-        plt.title(self.coin.capitalize() + ' ' + self.obs_title + ' ' + self.offset_title)
+        if title is None:
+            plt.title(self.coin.capitalize() + ' ' + self.obs_title + ' ' + self.offset_title)
+        else:
+            plt.title(title)
+
         plt.xlabel('Date')
         plt.ylabel('Price in %s' % self.convert)
         plt.xticks(rotation=45)

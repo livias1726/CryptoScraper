@@ -50,7 +50,7 @@ print(tabulate(cmc.get_historical_data('ethereum'), headers=["COIN", "DATE", "CU
 # SHOW INFO
 g = Graph('bitcoin', 'close', 'y')
 # g.show_observable()
-g.show_coins_pairing({'ethereum'})
+# g.show_coins_pairing({'ethereum'})
 # g.show_obs_pairing({'open'})
-# g.show_moving_average(200, True)
+g.show_moving_average(200, True)
 

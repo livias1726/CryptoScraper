@@ -7,6 +7,8 @@ DEFAULT_START = datetime.datetime.strptime("2013-4-28", "%Y-%m-%d")
 DEFAULT_END = datetime.datetime.today()
 DEFAULT_OFFSET = 'd'
 DEFAULT_STYLE = 'bmh'
+
+
 # 'bmh', 'ggplot', 'seaborn'
 
 
@@ -58,3 +60,24 @@ def set_size(width, fraction=1):
 
     return fig_width_in, fig_height_in
 
+
+def get_moving_average(data, n):
+    i = 0
+    # Initialize an empty list to store moving averages
+    moving_averages = []
+
+    # Loop through the data
+    while i < len(data) - n + 1:
+        # Store elements from i to i+n
+        window = data[i: i + n]
+
+        # Compute the average
+        window_average = round(sum(window) / n, 2)
+
+        # Store the average
+        moving_averages.append(window_average)
+
+        # Slide window
+        i += 1
+
+    return moving_averages
