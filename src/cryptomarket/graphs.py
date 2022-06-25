@@ -85,9 +85,9 @@ class Graph:
 
     def show_observable(self):
         x, y = self._get_axes()
-        print(x[-1])
-        print(self.end)
-        if datetime.strptime(x[-1], '%Y-%m-%d') < self.end:  # Update data to the requested end date
+
+        # Update data to the requested end date
+        if datetime.strptime(x[-1], '%Y-%m-%d').date() < self.end.date():
             cmc = CMCHistorical()
             cmc.update_historical_data(self.coin)
             x, y = self._get_axes()
@@ -106,7 +106,7 @@ class Graph:
 
     def show_obs_pairing(self, observables):
         dates, first_data = self._get_axes()
-        if datetime.strptime(dates[-1], '%Y-%m-%d') < self.end:  # Update data to the requested end date
+        if datetime.strptime(dates[-1], '%Y-%m-%d').date() < self.end.date():  # Update data to the requested end date
             cmc = CMCHistorical()
             cmc.update_historical_data(self.coin)
             dates, first_data = self._get_axes()
@@ -149,7 +149,7 @@ class Graph:
 
         # Get data for the main coin (the one passed to the constructor of the class)
         dates, first_data = self._get_axes()
-        if datetime.strptime(dates[-1], '%Y-%m-%d') < self.end:  # Update data to the requested end date
+        if datetime.strptime(dates[-1], '%Y-%m-%d').date() < self.end.date():  # Update data to the requested end date
             cmc = CMCHistorical()
             cmc.update_historical_data(self.coin)
             dates, first_data = self._get_axes()
@@ -204,63 +204,87 @@ class Graph:
     The moving average is compute in terms of number of days.
     If on_data is true, the MA is shown against the data on which it is computed.
     """
-    def show_sma(self, n, on_data):
+    def show_sma(self, list_of_days, on_data=True):
         # Get data
         dates, obs_data = self._get_axes()
+        if datetime.strptime(dates[-1], '%Y-%m-%d').date() < self.end.date():  # Update data to the requested end date
+            cmc = CMCHistorical()
+            cmc.update_historical_data(self.coin)
+            dates, obs_data = self._get_axes()
 
+        temp = list_of_days[0]
+        for days in list_of_days:  # Get the largest value
+            if len(obs_data) < days:
+                print("Too few data. Try to extend the period of observation or reduce the MA index")
+                return None
+
+            if temp < days:
+                temp = days
+
+        data_array = []
+        header = []
         # Check if MA is computable
-        if len(obs_data) < n:
-            print("Too few data. Try to extend the period of observation or reduce the MA index")
-            return None
+        for days in list_of_days:
+            # Compute SMA
+            smas = utils.compute_sma(obs_data, days)
+            data_array.append(smas[temp-days:])
+            header.append("SMA(" + str(days) + ")")
 
-        # Compute the first n days
-        moving_averages = utils.get_moving_average(obs_data, n)
-        data_array = [moving_averages]
-
-        title = self.coin.capitalize() + " " + self.observable + ' SMA on ' + str(n) + " days"
+        if len(list_of_days) == 1:
+            title = self.coin.capitalize() + " " + self.observable + ' SMA on ' + str(list_of_days[0]) + " days"
+        else:
+            title = self.coin.capitalize() + " " + self.observable + ' SMA'
 
         # Prepare axes
         if on_data:
-            data_array.append(obs_data[n-1:])
-            header = ["MA(" + str(n) + ")", self.observable.capitalize()]
+            data_array.append(obs_data[temp - 1:])
+            header.append(self.observable.capitalize())
 
-            # Design
-            des = _Designer(self.coin, self.observable, self.offset, self.convert)
-            des.design_multi_lines_plot(title, header, data_array, dates[n-1:])
-        else:
-            # Design
-            des = _Designer(self.coin, self.observable, self.offset, self.convert)
-            des.design_single_line_plot(dates[n-1:], moving_averages, title)
+        # Design
+        des = _Designer(self.coin, self.observable, self.offset, self.convert)
+        des.design_multi_lines_plot(title, header, data_array, dates[temp - 1:])
 
-    def show_ema(self, on_data):
+    def show_ema(self, list_of_days, smooth, on_data=True):
         # Get data
         dates, obs_data = self._get_axes()
+        if datetime.strptime(dates[-1], '%Y-%m-%d').date() < self.end.date():  # Update data to the requested end date
+            cmc = CMCHistorical()
+            cmc.update_historical_data(self.coin)
+            dates, obs_data = self._get_axes()
 
-        # create a dataframe
-        data_df = pd.DataFrame(obs_data)
+        temp = list_of_days[0]
+        for days in list_of_days:  # Get the largest value
+            if len(obs_data) < days+1:  # Check if EMA is computable
+                print("Too few data. Try to extend the period of observation or reduce the MA index")
+                return None
 
-        # EMA: the com value must result in a good smoothened curve
-        ema = data_df.ewm(com=0.1).mean()
-        ema_values = []
-        for array in ema[[0]].values:
-            ema_values.append(array[0])
+            if temp < days:
+                temp = days
 
-        data_array = [ema_values[::150]]
+        data_array = []
+        header = []
+        for days in list_of_days:
+            # Compute EMA
+            emas = utils.compute_ema(obs_data, days, smooth)
+            data_array.append(emas[temp - days:])
+            header.append("EMA(" + str(days) + ")")
 
-        title = self.coin.capitalize() + " " + self.observable + " EMA"
+        if len(list_of_days) == 1:
+            title = self.coin.capitalize() + " " + self.observable + ' EMA on ' + str(list_of_days[0]) + " days"
+        else:
+            title = self.coin.capitalize() + " " + self.observable + ' EMA'
 
         # Prepare axes
         if on_data:
-            data_array.append(obs_data[::150])
-            header = ["EMA", self.observable.capitalize()]
+            data_array.append(obs_data[temp - 1:])
+            header.append(self.observable.capitalize())
 
-            # Design
-            des = _Designer(self.coin, self.observable, self.offset, self.convert)
-            des.design_multi_lines_plot(title, header, data_array, dates[::150])
-        else:
-            # Design
-            des = _Designer(self.coin, self.observable, self.offset, self.convert)
-            des.design_single_line_plot(dates[::150], ema_values[::150], title)
+        # Design
+        des = _Designer(self.coin, self.observable, self.offset, self.convert)
+        des.design_multi_lines_plot(title, header, data_array, dates[temp - 1:])
+
+    def show_ma(self):
+        pass
 
     def show_latest_pairing(self):
         pass

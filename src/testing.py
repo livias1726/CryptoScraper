@@ -47,10 +47,9 @@ print(tabulate(cmc.get_historical_data('algorand'), headers=["COIN", "DATE", "CU
 
 
 # SHOW INFO
-g = Graph('bitcoin', 'close', 'd', '2022-05-25')
-g.show_observable()
+g = Graph('bitcoin', 'high', 'd', '2020-08-06')
+# g.show_observable()
 # g.show_coins_pairing({'cardano'})
-# g.show_obs_pairing({'close'})
-# g.show_sma(200, True)
-# g.show_ema(True)
-
+# g.show_obs_pairing({'low'})
+# g.show_sma([50, 100])
+# g.show_ema([50, 100], 2)

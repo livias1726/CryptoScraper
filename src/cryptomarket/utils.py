@@ -61,18 +61,18 @@ def set_size(width, fraction=1):
     return fig_width_in, fig_height_in
 
 
-def get_moving_average(data, n):
+def compute_sma(data, days):
     i = 0
     # Initialize an empty list to store moving averages
     moving_averages = []
 
     # Loop through the data
-    while i < len(data) - n + 1:
+    while i < len(data) - days + 1:
         # Store elements from i to i+n
-        window = data[i: i + n]
+        window = data[i: i + days]
 
         # Compute the average
-        window_average = round(sum(window) / n, 2)
+        window_average = round(sum(window) / days, 2)
 
         # Store the average
         moving_averages.append(window_average)
@@ -81,3 +81,10 @@ def get_moving_average(data, n):
         i += 1
 
     return moving_averages
+
+
+def compute_ema(data, days, smooth):
+    ema = [sum(data[:days]) / days]
+    for price in data[days:]:
+        ema.append((price * (smooth / (1 + days))) + ema[-1] * (1 - (smooth / (1 + days))))
+    return ema
