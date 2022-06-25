@@ -4,7 +4,7 @@ from requests import get
 API_KEY = '2ce45601-9a7d-4b94-818f-b87949adff0e'
 DEFAULT_CONVERT = 'USD'
 DEFAULT_START = datetime.datetime.strptime("2013-4-28", "%Y-%m-%d")
-DEFAULT_END = datetime.datetime.today()
+DEFAULT_END = datetime.datetime.today() - datetime.timedelta(days=1)
 DEFAULT_OFFSET = 'd'
 DEFAULT_STYLE = 'bmh'
 

@@ -15,7 +15,6 @@ cmc.update_category_listing()
 
 cmc = CMCLatest()
 cmc.update_latest_data()
-
 cmc = CMCHistorical()
 cmc.update_historical_data('bitcoin')
 """
@@ -41,17 +40,17 @@ print(tabulate(cmc.get_cat_coins_latest_data('Cybersecurity'), headers=["NAME", 
                                                                         "VOLUME CHANGE (24H)", "PERCENT CHANGE (24H)", 
                                                                         "MARKET CAP", "LAST UPDATE"]))
 
-cmc = CMCHistorical()
-print(tabulate(cmc.get_historical_data('ethereum'), headers=["COIN", "DATE", "CURRENCY", "OPENING", "HIGHEST", "LOWEST",
+cmc = CMCHistorical(start_date='2022-05-25')
+print(tabulate(cmc.get_historical_data('algorand'), headers=["COIN", "DATE", "CURRENCY", "OPENING", "HIGHEST", "LOWEST",
                                                              "CLOSE", "VOLUME", "MARKET CAP"]))
 """
 
 
 # SHOW INFO
-g = Graph('bitcoin', 'close', 'y')
-# g.show_observable()
-# g.show_coins_pairing({'ethereum'})
-# g.show_obs_pairing({'open'})
+g = Graph('bitcoin', 'close', 'd', '2022-05-25')
+g.show_observable()
+# g.show_coins_pairing({'cardano'})
+# g.show_obs_pairing({'close'})
 # g.show_sma(200, True)
-g.show_ema(True)
+# g.show_ema(True)
 

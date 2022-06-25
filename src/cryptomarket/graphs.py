@@ -1,8 +1,12 @@
 from datetime import datetime
 
+import matplotlib.dates
+
 from src.cryptomarket import utils, data, parser
 import matplotlib.pyplot as plt
 import pandas as pd
+
+from src.cryptomarket.data import CMCHistorical
 
 
 class Graph:
@@ -20,21 +24,36 @@ class Graph:
 
         self.coin = coin
         self.observable = observable
-
         self.offset = offset
-        self.start = start
-        self.end = end
+
+        if start != utils.DEFAULT_START:
+            self.start = datetime.strptime(start, "%Y-%m-%d")
+        else:
+            self.start = start
+
+        if end != utils.DEFAULT_END:
+            self.end = datetime.strptime(end, "%Y-%m-%d")
+        else:
+            self.end = end
 
         self.convert = convert
 
         # Attributes to compute for plotting
         self._set_obs_idx(observable)
 
-    def _fetch_data(self, coin):
-        cmc = data.CMCHistorical(self.start, self.end, False, self.convert)
-        dataset = cmc.get_historical_data(coin)
-
-        return dataset
+    def _set_obs_idx(self, observable):
+        if observable == 'open':
+            self.num_observable = 3
+        elif observable == 'high':
+            self.num_observable = 4
+        elif observable == 'low':
+            self.num_observable = 5
+        elif self.observable == 'close':
+            self.num_observable = 6
+        elif self.observable == 'volume':
+            self.num_observable = 7
+        elif self.observable == 'market_cap':
+            self.num_observable = 8
 
     def _get_axes(self, coin=None, observable=None):
         if coin is None:
@@ -57,9 +76,21 @@ class Graph:
         obs = [j[observable] for j in items]
 
         return dates, obs
-                
+
+    def _fetch_data(self, coin):
+        cmc = data.CMCHistorical(self.start, self.end, False, self.convert)
+        dataset = cmc.get_historical_data(coin)
+
+        return dataset
+
     def show_observable(self):
         x, y = self._get_axes()
+        print(x[-1])
+        print(self.end)
+        if datetime.strptime(x[-1], '%Y-%m-%d') < self.end:  # Update data to the requested end date
+            cmc = CMCHistorical()
+            cmc.update_historical_data(self.coin)
+            x, y = self._get_axes()
 
         if self.offset != utils.DEFAULT_OFFSET:
             # Parse data
@@ -75,6 +106,11 @@ class Graph:
 
     def show_obs_pairing(self, observables):
         dates, first_data = self._get_axes()
+        if datetime.strptime(dates[-1], '%Y-%m-%d') < self.end:  # Update data to the requested end date
+            cmc = CMCHistorical()
+            cmc.update_historical_data(self.coin)
+            dates, first_data = self._get_axes()
+
         if self.offset != utils.DEFAULT_OFFSET:
             # Parse data
             tr = parser.Trimmer(self.offset, dates, first_data)
@@ -102,12 +138,21 @@ class Graph:
 
         # Design
         title = self.coin.capitalize() + ' observables pairing'
-        des = _Designer(self.coin, self.observable, self.offset, self.convert)
+        des = _Designer(self.coin, self.observable, offset=self.offset, convert=self.convert)
         des.design_multi_lines_plot(title, header, data_array, dates)
 
-    def show_coins_pairing(self, coins):
+    def show_coins_pairing(self, coins, correlation=False):
+        if correlation and len(coins) != 1:
+            print("Invalid arguments: to show a correlation between coins "
+                  "enter a single coin to pair with the main one.")
+            return
+
         # Get data for the main coin (the one passed to the constructor of the class)
         dates, first_data = self._get_axes()
+        if datetime.strptime(dates[-1], '%Y-%m-%d') < self.end:  # Update data to the requested end date
+            cmc = CMCHistorical()
+            cmc.update_historical_data(self.coin)
+            dates, first_data = self._get_axes()
 
         header = [self.coin.capitalize()]
         dates_array = [dates]
@@ -116,6 +161,11 @@ class Graph:
         # Get data for every other coin requested in input
         for coin in coins:
             x, y = self._get_axes(coin)
+            if len(y) < len(data_array[-1]):  # Stored data for the current coin needs to be updated!
+                cmc = CMCHistorical()
+                cmc.update_historical_data(coin)
+                x, y = self._get_axes(coin)
+
             x_date = datetime.strptime(x[0], '%Y-%m-%d')
 
             if x_date > self.start:
@@ -147,7 +197,7 @@ class Graph:
 
         # Design
         title = self.observable.capitalize() + ' price for coins pairing'
-        des = _Designer(self.coin, self.observable, self.offset, self.convert)
+        des = _Designer(self.coin, self.observable, offset=self.offset, convert=self.convert, correlation=correlation)
         des.design_multi_lines_plot(title, header, data_array, dates)
 
     """
@@ -215,20 +265,6 @@ class Graph:
     def show_latest_pairing(self):
         pass
 
-    def _set_obs_idx(self, observable):
-        if observable == 'open':
-            self.num_observable = 3
-        elif observable == 'high':
-            self.num_observable = 4
-        elif observable == 'low':
-            self.num_observable = 5
-        elif self.observable == 'close':
-            self.num_observable = 6
-        elif self.observable == 'volume':
-            self.num_observable = 7
-        elif self.observable == 'market_cap':
-            self.num_observable = 8
-
     def _get_obs_title(self, observable):
         if observable == 'open':
             return "opening prices"
@@ -269,12 +305,13 @@ class Graph:
 
 class _Designer(Graph):
 
-    def __init__(self, coin, observable, offset, convert, obs_title=None, style=utils.DEFAULT_STYLE):
+    def __init__(self, coin, observable, offset, convert, obs_title=None, correlation=False, style=utils.DEFAULT_STYLE):
         super().__init__(coin, observable)
 
         self.obs_title = obs_title
         self._set_offset_title(offset)
         self.convert = convert
+        self.correlation = correlation
         self.style = style
 
     def _set_offset_title(self, offset):
@@ -289,17 +326,21 @@ class _Designer(Graph):
 
     def design_single_line_plot(self, x, y, title=None):
         plt.style.use(self.style)
-        plt.figure(figsize=utils.set_size(32, 18))
+        fig, ax = plt.subplots(figsize=utils.set_size(32, 18))
+        ax.plot(x, y, linewidth=1)
 
-        plt.plot(x, y)
+        ax.xaxis.set_major_locator(matplotlib.dates.AutoDateLocator())
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Price in %s' % self.convert)
+
+        ax.grid(True)
+
+        fig.autofmt_xdate()
+
         if title is None:
-            plt.title(self.coin.capitalize() + ' ' + self.obs_title + ' ' + self.offset_title)
+            fig.suptitle(self.coin.capitalize() + ' ' + self.obs_title + ' ' + self.offset_title, fontweight="bold")
         else:
-            plt.title(title)
-
-        plt.xlabel('Date')
-        plt.ylabel('Price in %s' % self.convert)
-        plt.xticks(rotation=45)
+            fig.suptitle(title, fontweight="bold")
 
         plt.show()
 
@@ -308,17 +349,36 @@ class _Designer(Graph):
 
     def design_multi_lines_plot(self, title, header, data_array, dates):
         plt.style.use(self.style)
-        plt.figure(figsize=utils.set_size(32, 18))
+        fig, ax = plt.subplots(figsize=utils.set_size(32, 18))
 
-        plt.plot()
-        for y in data_array:
-            plt.plot(dates, y)
+        ax.set_xlabel('Date')
+        ax.xaxis.set_major_locator(matplotlib.dates.AutoDateLocator())
+        ax.grid(True)
 
-        plt.title(title)
-        plt.xlabel('Date')
-        plt.ylabel('Price in %s' % self.convert)
-        plt.legend(header, loc='upper left')
+        if self.correlation:
+            color = 'tab:red'
+            ax.set_ylabel(header[0] + ' price in %s' % self.convert, color=color)
+            ax.plot(dates, data_array[0], color=color, linewidth=1)
+            ax.tick_params(axis='y', labelcolor=color)
 
-        plt.xticks(rotation=45)
+            ax1 = ax.twinx()
+
+            color = 'tab:blue'
+            ax1.set_ylabel(header[1] + ' price in %s' % self.convert, color=color)
+            ax1.plot(dates, data_array[1], color=color, linewidth=1)
+            ax1.tick_params(axis='y', labelcolor=color)
+
+        else:
+            for y in data_array:
+                ax.plot(dates, y, linewidth=1)
+                ax.set_ylabel('Price in %s' % self.convert)
+            plt.legend(header, loc='best')
+
+        fig.autofmt_xdate()
+
+        if title is None:
+            fig.suptitle(self.coin.capitalize() + ' ' + self.obs_title + ' ' + self.offset_title, fontweight="bold")
+        else:
+            fig.suptitle(title, fontweight="bold")
 
         plt.show()
