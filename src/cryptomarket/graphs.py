@@ -283,8 +283,38 @@ class Graph:
         des = _Designer(self.coin, self.observable, self.offset, self.convert)
         des.design_multi_lines_plot(title, header, data_array, dates[temp - 1:])
 
-    def show_ma(self):
-        pass
+    def show_ma(self, days, smooth, on_data=True):
+        # Get data
+        dates, obs_data = self._get_axes()
+        if datetime.strptime(dates[-1], '%Y-%m-%d').date() < self.end.date():  # Update data to the requested end date
+            cmc = CMCHistorical()
+            cmc.update_historical_data(self.coin)
+            dates, obs_data = self._get_axes()
+
+        if len(obs_data) < days + 1:  # Check if EMA is computable
+            print("Too few data. Try to extend the period of observation or reduce the MA index")
+            return None
+
+        # Compute SMA
+        smas = utils.compute_sma(obs_data, days)
+        data_array = [smas]
+        header = ["SMA(" + str(days) + ")"]
+
+        # Compute EMA
+        emas = utils.compute_ema(obs_data, days, smooth)
+        data_array.append(emas)
+        header.append("EMA(" + str(days) + ")")
+
+        title = self.coin.capitalize() + " " + self.observable + ' moving averages on ' + str(days) + " days"
+
+        # Prepare axes
+        if on_data:
+            data_array.append(obs_data[days - 1:])
+            header.append(self.observable.capitalize())
+
+        # Design
+        des = _Designer(self.coin, self.observable, self.offset, self.convert)
+        des.design_multi_lines_plot(title, header, data_array, dates[days - 1:])
 
     def show_latest_pairing(self):
         pass
