@@ -15,10 +15,9 @@ cmc.update_category_listing()
 
 cmc = CMCLatest()
 cmc.update_latest_data()
-"""
 cmc = CMCHistorical()
 cmc.update_historical_data('cardano')
-
+"""
 
 # LIST INFO
 """
@@ -48,9 +47,9 @@ print(tabulate(cmc.get_historical_data('cardano'), headers=["COIN", "DATE", "CUR
 """
 
 # SHOW INFO
-# g = Graph('bitcoin', 'high', 'd', '2020-08-06')
+g = Graph('bitcoin', 'high', 'd', '2020-08-06')
 # g.show_observable()
-# g.show_coins_pairing({'cardano'}, correlation=True)
+g.show_coins_pairing({'cardano'}, correlation=True)
 # g.show_obs_pairing({'low'})
 # g.show_sma([50, 100])
 # g.show_ema([50, 100], 2)
