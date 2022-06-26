@@ -1,5 +1,8 @@
 from requests import Session
 from _datetime import datetime
+
+from tabulate import tabulate
+
 import src.cryptomarket.utils as utils
 import src.database.database as database
 from src.cryptomarket import parser

@@ -1,12 +1,12 @@
 from datetime import datetime
 
 import matplotlib.dates
+import numpy as np
 
 from src.cryptomarket import utils, data, parser
 import matplotlib.pyplot as plt
-import pandas as pd
 
-from src.cryptomarket.data import CMCHistorical
+from src.cryptomarket.data import CMCHistorical, CMCLatest
 
 
 class Graph:
@@ -196,7 +196,7 @@ class Graph:
         dates = dates_array[0]
 
         # Design
-        title = self.observable.capitalize() + ' price for coins pairing'
+        title = self._get_obs_title(self.observable) + ' for coins pairing'
         des = _Designer(self.coin, self.observable, offset=self.offset, convert=self.convert, correlation=correlation)
         des.design_multi_lines_plot(title, header, data_array, dates)
 
@@ -231,9 +231,10 @@ class Graph:
             header.append("SMA(" + str(days) + ")")
 
         if len(list_of_days) == 1:
-            title = self.coin.capitalize() + " " + self.observable + ' SMA on ' + str(list_of_days[0]) + " days"
+            title = self.coin.capitalize() + " " + self._get_obs_title(self.observable) + ' SMA on ' + \
+                    str(list_of_days[0]) + " days"
         else:
-            title = self.coin.capitalize() + " " + self.observable + ' SMA'
+            title = self.coin.capitalize() + " " + self._get_obs_title(self.observable) + ' SMA'
 
         # Prepare axes
         if on_data:
@@ -270,9 +271,10 @@ class Graph:
             header.append("EMA(" + str(days) + ")")
 
         if len(list_of_days) == 1:
-            title = self.coin.capitalize() + " " + self.observable + ' EMA on ' + str(list_of_days[0]) + " days"
+            title = self.coin.capitalize() + " " + self._get_obs_title(self.observable) + ' EMA on ' + \
+                    str(list_of_days[0]) + " days"
         else:
-            title = self.coin.capitalize() + " " + self.observable + ' EMA'
+            title = self.coin.capitalize() + " " + self._get_obs_title(self.observable) + ' EMA'
 
         # Prepare axes
         if on_data:
@@ -305,7 +307,8 @@ class Graph:
         data_array.append(emas)
         header.append("EMA(" + str(days) + ")")
 
-        title = self.coin.capitalize() + " " + self.observable + ' moving averages on ' + str(days) + " days"
+        title = self.coin.capitalize() + " " + self._get_obs_title(self.observable) + ' moving averages on ' + \
+                str(days) + " days"
 
         # Prepare axes
         if on_data:
@@ -316,8 +319,26 @@ class Graph:
         des = _Designer(self.coin, self.observable, self.offset, self.convert)
         des.design_multi_lines_plot(title, header, data_array, dates[days - 1:])
 
-    def show_latest_pairing(self):
-        pass
+    def show_latest_pairing(self, coins):
+        list_coins = [self.coin]
+        for coin in coins:
+            list_coins.append(coin)
+
+        # Get data
+        cmc = CMCLatest()
+        tot_data = cmc.get_latest_data(list_coins)
+
+        title = "Latest prices (" + self.convert + ")"
+
+        header = []
+        data_array = []
+        for i in tot_data:
+            header.append(i[0] + "\n(" + i[-1][0:10] + ",\n" + i[-1][11:19] + ")")
+            data_array.append(i[2])
+
+        # Design
+        des = _Designer(self.coin, self.observable, self.offset, self.convert)
+        des.design_bar_plot(title, header, data_array)
 
     def _get_obs_title(self, observable):
         if observable == 'open':
@@ -398,9 +419,6 @@ class _Designer(Graph):
 
         plt.show()
 
-    def design_bar_plot(self):
-        pass
-
     def design_multi_lines_plot(self, title, header, data_array, dates):
         plt.style.use(self.style)
         fig, ax = plt.subplots(figsize=utils.set_size(32, 18))
@@ -435,4 +453,53 @@ class _Designer(Graph):
         else:
             fig.suptitle(title, fontweight="bold")
 
+        plt.show()
+
+    def design_bar_plot(self, title, header, data_array):
+        plt.style.use(self.style)
+
+        # Figure Size
+        fig, ax = plt.subplots(figsize=(10, 6), facecolor=(.94, .94, .94))
+        plt.inferno()
+
+        # Horizontal Bar Plot
+        bars = ax.barh(header, data_array)
+
+        # Title
+        fig.suptitle(title, fontweight="bold", fontsize=18)
+        plt.subplots_adjust(top=0.92, bottom=0.1)
+
+        # Remove gridlines
+        ax.grid(False)
+
+        # Show top values
+        ax.invert_yaxis()
+
+        # Values
+        max_val = np.max(data_array)
+
+        # Gradient
+        grad = np.atleast_2d(np.linspace(0, 1, 256))
+        ax = bars[0].axes
+        lim = ax.get_xlim() + ax.get_ylim()
+        for bar in bars:
+            x, y = bar.get_xy()
+            w, h = bar.get_width(), bar.get_height()
+            ax.imshow(grad, extent=[x + w, x, y, y + h], aspect='auto', zorder=1)
+
+            ann = str(round(w, 2))
+            y = y + h / 2
+
+            if w > max_val / 10:
+                shift = -50
+                plt.annotate(ann, (w, y), xytext=(shift, 0), textcoords='offset points', va='center', ha='left',
+                             color='white')
+            else:
+                shift = 5
+                plt.annotate(ann, (w, y), xytext=(shift, 0), textcoords='offset points', va='center', ha='left',
+                             color='black')
+
+        ax.axis(lim)
+
+        # Show Plot
         plt.show()

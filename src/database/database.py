@@ -354,7 +354,10 @@ class DBSetter(DBConnector):
             is_new = True
 
         if not is_new:
-            self._filter_insert(cur, coin_id, convert, start, end, descending)
+            self._filter_insert(coin_id, convert, start, end, descending)
+
+            if self.data is None:
+                return DBGetter().get_historical_data(coin_id, convert, start, end, descending)
 
         # Insert rows
         for item in self.data:
@@ -375,33 +378,37 @@ class DBSetter(DBConnector):
 
         return DBGetter().get_historical_data(coin_id, convert, start, end, descending)
 
-    def _filter_insert(self, cur, coin_id, convert, start, end, descending):
+    def _filter_insert(self, coin_id, convert, start, end, descending):
         # Get stored data
-        data = DBGetter().get_historical_data(coin_id, convert, start, end, descending)
-        if data is None:
-            return [start, end]
+        stored_data = DBGetter().get_historical_data(coin_id, convert, start, end, descending)
+
+        if stored_data is None:  # If no historical data for this coin is stored: insert all data
+            return
 
         first_data = self.data[0]
         last_data = self.data[len(self.data)-1]
 
+        # Get date for first and last data retrieved
         start_r = strptime(first_data['date'], '%Y-%m-%d')
         end_r = strptime(last_data['date'], '%Y-%m-%d')
 
-        # Get date for last data stored
-        start_s = strptime(data[0][1], '%Y-%m-%d')
-        end_s = strptime(data[len(data)-1][1], '%Y-%m-%d')
+        # Get date for first and last data stored
+        start_s = strptime(stored_data[0][1], '%Y-%m-%d')
+        end_s = strptime(stored_data[len(stored_data)-1][1], '%Y-%m-%d')
 
         # Find which data to store
         filtered = None
-        if start_r < start_s:
+
+        if start_r < start_s:  # retrieved data start before stored data
             for i in range(0, len(self.data)):
                 if strptime(self.data[i]['date'], '%Y-%m-%d') == start_s:
-                    filtered = self.data[:i]
+                    filtered = self.data[:i]  # Get all data before stored ones
                     break
 
         if end_r > end_s or start_r >= end_s:
             for i in range(0, len(self.data)):
                 if strptime(self.data[i]['date'], '%Y-%m-%d') == end_s:
+                    # Get all data after stored ones
                     if filtered is not None:
                         filtered = filtered + self.data[i+1:]
                     else:
@@ -409,4 +416,3 @@ class DBSetter(DBConnector):
                     break
 
         self.data = filtered
-
