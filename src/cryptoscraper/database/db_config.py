@@ -1,1 +1,1 @@
-NAME = 'database/cmc.db'
+NAME = 'cmc.db'

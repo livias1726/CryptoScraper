@@ -3,10 +3,10 @@ from datetime import datetime
 import matplotlib.dates
 import numpy as np
 
-from src.cryptoscraper import utils, data, parser
+from cryptoscraper import utils, data, parser
 import matplotlib.pyplot as plt
 
-from src.cryptoscraper.data import CMCHistorical, CMCLatest
+from cryptoscraper.data import CMCHistorical, CMCLatest
 
 
 class Graph:
@@ -340,59 +340,6 @@ class Graph:
         des = _Designer(self.coin, self.observable, self.offset, self.convert)
         des.design_bar_plot(title, header, data_array)
 
-    def show_correlation(self, coins):
-        # Get data for the main coin (the one passed to the constructor of the class)
-        dates, first_data = self._get_axes()
-        if datetime.strptime(dates[-1], '%Y-%m-%d').date() < self.end.date():  # Update data to the requested end date
-            cmc = CMCHistorical()
-            cmc.update_historical_data(self.coin)
-            dates, first_data = self._get_axes()
-
-        header = [self.coin.capitalize()]
-        dates_array = [dates]
-        data_array = [first_data]
-
-        # Get data for every other coin requested in input
-        for coin in coins:
-            x, y = self._get_axes(coin)
-            if len(y) < len(data_array[-1]):  # Stored data for the current coin needs to be updated!
-                cmc = CMCHistorical()
-                cmc.update_historical_data(coin)
-                x, y = self._get_axes(coin)
-
-            x_date = datetime.strptime(x[0], '%Y-%m-%d')
-
-            if x_date > self.start:
-                self.start = x_date  # Update start date for other coins
-                # Process the stored data to align the starting date
-                dates_array, data_array = self._process_coin_data(dates_array, data_array, True)
-
-            elif x_date < self.start:
-                # Process the retrieved data to align the starting date
-                x, y = self._process_coin_data(x, y, False)
-
-            header.append(coin.capitalize())
-            dates_array.append(x)
-            data_array.append(y)
-
-        if self.offset != utils.DEFAULT_OFFSET:
-            for idx in range(len(dates_array)):
-                # Parse data
-                x = dates_array[idx]
-                y = data_array[idx]
-
-                tr = parser.Trimmer(self.offset, x, y)
-                dates_array[idx], data_array[idx] = tr.trim_data()
-
-                if dates_array[idx] is None:
-                    return
-
-        # Compute correlation
-        for d in data_array:
-            print(len(d))
-        data_array.pct_change().corr(method='pearson')
-        print(data_array)
-
     def _get_obs_title(self, observable):
         if observable == 'open':
             return "opening prices"
@@ -454,7 +401,7 @@ class _Designer(Graph):
 
     def design_single_line_plot(self, x, y, title=None):
         plt.style.use(self.style)
-        fig, ax = plt.subplots(figsize=utils.set_size(32, 18))
+        fig, ax = plt.subplots(figsize=utils.set_size(32, 18), facecolor=(.94, .94, .94))
         ax.plot(x, y, linewidth=1)
 
         ax.xaxis.set_major_locator(matplotlib.dates.AutoDateLocator())
@@ -474,7 +421,7 @@ class _Designer(Graph):
 
     def design_multi_lines_plot(self, title, header, data_array, dates):
         plt.style.use(self.style)
-        fig, ax = plt.subplots(figsize=utils.set_size(32, 18))
+        fig, ax = plt.subplots(figsize=utils.set_size(32, 18), facecolor=(.94, .94, .94))
 
         ax.set_xlabel('Date')
         ax.xaxis.set_major_locator(matplotlib.dates.AutoDateLocator())
@@ -554,5 +501,3 @@ class _Designer(Graph):
 
         # Show Plot
         plt.show()
-
-   # def design_heatmap(self):

@@ -1,9 +1,11 @@
+from datetime import timedelta
+
 from requests import Session
 from _datetime import datetime
 
-import src.cryptoscraper.utils as utils
-import src.cryptoscraper.database.database as database
-from src.cryptoscraper import parser
+import cryptoscraper.utils as utils
+import cryptoscraper.database.database as database
+from cryptoscraper import parser
 
 
 """
@@ -319,7 +321,9 @@ class CMCHistorical:
                 return None
 
         # Convert the date for the URL
-        start_date_iso = self.start_date.isoformat()
+        start = self.start_date - timedelta(days=1)  # Needed to get every date requested
+
+        start_date_iso = start.isoformat()
         end_date_iso = self.end_date.isoformat()
 
         # Build URL

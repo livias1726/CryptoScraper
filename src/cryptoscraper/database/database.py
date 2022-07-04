@@ -2,7 +2,7 @@ from sqlite3 import Error
 import sqlite3
 from time import strptime
 
-from src.cryptoscraper.database import db_config, db_resources
+from cryptoscraper.database import db_config, db_resources
 
 
 def _fetch_all(cur, query):
