@@ -1,12 +1,18 @@
 from tabulate import tabulate
 
-from src.cryptomarket.data import CMCHistorical, CMC, CMCListing, CMCLatest
-from src.cryptomarket.graphs import Graph
-from src.database import database
+from src.cryptoscraper.data import CMCListing
+from src.cryptoscraper.database import database
 
 db = database.DBConnector()
 
-# UPDATE INFO
+# LIST
+cmc = CMCListing()
+print(tabulate(cmc.get_coins(), headers=["ID", "NAME", "SYMBOL"]))
+print(tabulate(cmc.get_categories(), headers=["NAME", "NUMBER OF TOKENS", "MARKET CAP", "VOLUME"]))
+print(tabulate(cmc.get_coins_for_category('Cybersecurity'), headers=["ID", "NAME"]))
+
+
+# UPDATE
 """
 cmc = CMCListing()
 cmc.update_coin_listing()
@@ -19,14 +25,7 @@ cmc = CMCHistorical()
 cmc.update_historical_data('cardano')
 """
 
-# LIST INFO
-"""
-cmc = CMCListing()
-print(tabulate(cmc.get_coins(), headers=["ID", "NAME", "SYMBOL"]))
-print(tabulate(cmc.get_categories(), headers=["NAME", "NUMBER OF TOKENS", "MARKET CAP", "VOLUME"]))
-print(tabulate(cmc.get_coins_for_category('Cybersecurity'), headers=["ID", "NAME"]))
-"""
-
+# LATEST
 """
 cmc = CMCLatest()
 print(tabulate(cmc.get_latest_data(['ethereum', 'bitcoin', 'litecoin']), headers=["NAME", "CURRENCY", "PRICE", 
@@ -46,12 +45,15 @@ print(tabulate(cmc.get_historical_data('cardano'), headers=["COIN", "DATE", "CUR
                                                              "CLOSE", "VOLUME", "MARKET CAP"]))
 """
 
-# SHOW INFO
-g = Graph('bitcoin', 'high', 'd', '2020-08-06')
-# g.show_observable()
+# SHOW
+"""
+g = Graph('bitcoin', 'low', 'd', '2021-08-06')
+g.show_observable()
 g.show_coins_pairing({'cardano'}, correlation=True)
-# g.show_obs_pairing({'low'})
-# g.show_sma([50, 100])
-# g.show_ema([50, 100], 2)
-# g.show_ma(100, 2)
-# g.show_latest_pairing(['ethereum', 'litecoin'])
+g.show_obs_pairing({'low'})
+g.show_sma([50, 100])
+g.show_ema([50, 100], 2)
+g.show_ma(100, 2)
+g.show_latest_pairing(['ethereum', 'cardano'])
+g.show_correlation({'ethereum', 'cardano'})
+"""

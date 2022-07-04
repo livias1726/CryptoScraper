@@ -2,7 +2,7 @@ from sqlite3 import Error
 import sqlite3
 from time import strptime
 
-from src.database import db_config, db_resources
+from src.cryptoscraper.database import db_config, db_resources
 
 
 def _fetch_all(cur, query):
@@ -389,11 +389,14 @@ class DBSetter(DBConnector):
         filtered = []
 
         j = 0
-        while j < tot:
-            for i in range(0, len(stored_data)):
-                while strptime(self.data[j]['date'], '%Y-%m-%d') != strptime(stored_data[i][1], '%Y-%m-%d'):
-                    filtered.append(self.data[j])
-                    j = j + 1
+        for i in range(0, len(stored_data)):
+            while strptime(self.data[j]['date'], '%Y-%m-%d') != strptime(stored_data[i][1], '%Y-%m-%d'):
+                filtered.append(self.data[j])
                 j = j + 1
+            j = j + 1
+
+            if j > tot:
+                break
+
 
         self.data = filtered

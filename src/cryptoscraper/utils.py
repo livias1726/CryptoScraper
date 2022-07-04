@@ -6,10 +6,10 @@ DEFAULT_CONVERT = 'USD'
 DEFAULT_START = datetime.datetime.strptime("2013-4-28", "%Y-%m-%d")
 DEFAULT_END = datetime.datetime.today() - datetime.timedelta(days=1)
 DEFAULT_OFFSET = 'd'
-DEFAULT_STYLE = 'bmh'
+DEFAULT_STYLE = 'seaborn-dark-palette'
 
 
-# 'bmh', 'ggplot', 'seaborn'
+# 'bmh', 'ggplot', 'seaborn', 'seaborn-dark-palette'
 
 
 def format_date(json_date):

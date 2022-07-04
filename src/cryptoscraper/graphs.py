@@ -3,10 +3,10 @@ from datetime import datetime
 import matplotlib.dates
 import numpy as np
 
-from src.cryptomarket import utils, data, parser
+from src.cryptoscraper import utils, data, parser
 import matplotlib.pyplot as plt
 
-from src.cryptomarket.data import CMCHistorical, CMCLatest
+from src.cryptoscraper.data import CMCHistorical, CMCLatest
 
 
 class Graph:
@@ -196,7 +196,7 @@ class Graph:
         dates = dates_array[0]
 
         # Design
-        title = self._get_obs_title(self.observable) + ' for coins pairing'
+        title = self._get_obs_title(self.observable).capitalize() + ' for coins pairing'
         des = _Designer(self.coin, self.observable, offset=self.offset, convert=self.convert, correlation=correlation)
         des.design_multi_lines_plot(title, header, data_array, dates)
 
@@ -340,6 +340,59 @@ class Graph:
         des = _Designer(self.coin, self.observable, self.offset, self.convert)
         des.design_bar_plot(title, header, data_array)
 
+    def show_correlation(self, coins):
+        # Get data for the main coin (the one passed to the constructor of the class)
+        dates, first_data = self._get_axes()
+        if datetime.strptime(dates[-1], '%Y-%m-%d').date() < self.end.date():  # Update data to the requested end date
+            cmc = CMCHistorical()
+            cmc.update_historical_data(self.coin)
+            dates, first_data = self._get_axes()
+
+        header = [self.coin.capitalize()]
+        dates_array = [dates]
+        data_array = [first_data]
+
+        # Get data for every other coin requested in input
+        for coin in coins:
+            x, y = self._get_axes(coin)
+            if len(y) < len(data_array[-1]):  # Stored data for the current coin needs to be updated!
+                cmc = CMCHistorical()
+                cmc.update_historical_data(coin)
+                x, y = self._get_axes(coin)
+
+            x_date = datetime.strptime(x[0], '%Y-%m-%d')
+
+            if x_date > self.start:
+                self.start = x_date  # Update start date for other coins
+                # Process the stored data to align the starting date
+                dates_array, data_array = self._process_coin_data(dates_array, data_array, True)
+
+            elif x_date < self.start:
+                # Process the retrieved data to align the starting date
+                x, y = self._process_coin_data(x, y, False)
+
+            header.append(coin.capitalize())
+            dates_array.append(x)
+            data_array.append(y)
+
+        if self.offset != utils.DEFAULT_OFFSET:
+            for idx in range(len(dates_array)):
+                # Parse data
+                x = dates_array[idx]
+                y = data_array[idx]
+
+                tr = parser.Trimmer(self.offset, x, y)
+                dates_array[idx], data_array[idx] = tr.trim_data()
+
+                if dates_array[idx] is None:
+                    return
+
+        # Compute correlation
+        for d in data_array:
+            print(len(d))
+        data_array.pct_change().corr(method='pearson')
+        print(data_array)
+
     def _get_obs_title(self, observable):
         if observable == 'open':
             return "opening prices"
@@ -460,13 +513,12 @@ class _Designer(Graph):
 
         # Figure Size
         fig, ax = plt.subplots(figsize=(10, 6), facecolor=(.94, .94, .94))
-        plt.inferno()
 
         # Horizontal Bar Plot
         bars = ax.barh(header, data_array)
 
         # Title
-        fig.suptitle(title, fontweight="bold", fontsize=18)
+        fig.suptitle(title, fontsize=18)
         plt.subplots_adjust(top=0.92, bottom=0.1)
 
         # Remove gridlines
@@ -485,21 +537,22 @@ class _Designer(Graph):
         for bar in bars:
             x, y = bar.get_xy()
             w, h = bar.get_width(), bar.get_height()
-            ax.imshow(grad, extent=[x + w, x, y, y + h], aspect='auto', zorder=1)
+            ax.imshow(grad, extent=[x + w, x, y, y + h], aspect='auto', zorder=1, cmap=plt.get_cmap('Blues'))
 
             ann = str(round(w, 2))
             y = y + h / 2
 
             if w > max_val / 10:
                 shift = -50
-                plt.annotate(ann, (w, y), xytext=(shift, 0), textcoords='offset points', va='center', ha='left',
-                             color='white')
             else:
                 shift = 5
-                plt.annotate(ann, (w, y), xytext=(shift, 0), textcoords='offset points', va='center', ha='left',
-                             color='black')
+
+            plt.annotate(ann, (w, y), xytext=(shift, 0), textcoords='offset points', va='center', ha='left',
+                         color='black')
 
         ax.axis(lim)
 
         # Show Plot
         plt.show()
+
+   # def design_heatmap(self):
